@@ -1,0 +1,8 @@
+<div *ngIf="rtcService.connected && !joined">
+  <mat-form-field>
+    <input matInput placeholder="User name" [(ngModel)]="userName">
+  </mat-form-field>
+  <br />
+  <button mat-raised-button [disabled]="!userName || userName === ''" (click)="connect()">Connect</button>
+</div>
+<app-member *ngFor="let user of users;trackBy: trackByFn" [user]="user" style="margin-left: 12px"></app-member>
