@@ -31,6 +31,9 @@ export class AppMemberComponent implements OnInit {
           this.theVideo.srcObject = stream;
         }
       }
+      else {
+        console.log('No stream');
+      }
     });
   }
 }

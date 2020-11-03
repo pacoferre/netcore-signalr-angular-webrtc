@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28010.2019
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AngularAppWeb", "AngularAppWeb\AngularAppWeb.csproj", "{4EC6072F-2D74-4E5A-842D-1E5C331D2B00}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AngularAppWeb", "AngularAppWeb\AngularAppWeb.csproj", "{4EC6072F-2D74-4E5A-842D-1E5C331D2B00}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

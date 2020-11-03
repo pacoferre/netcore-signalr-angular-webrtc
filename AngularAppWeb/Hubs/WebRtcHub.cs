@@ -7,13 +7,6 @@ namespace AngularAppWeb.Hubs
 {
     public class WebRtcHub : Hub
     {
-#if DEBUG
-        private string iceUser = "testuser";
-#else
-        private string iceUser = "produser";
-#endif
-        private static DateTime lastPassReset = DateTime.MinValue;
-
         public string GetConnectionId()
         {
             return Context.ConnectionId;
@@ -53,27 +46,20 @@ namespace AngularAppWeb.Hubs
 
         public async Task HangUp()
         {
-            try
+            var callingUser = User.Get(Context.ConnectionId);
+
+            if (callingUser == null)
             {
-                var callingUser = User.Get(Context.ConnectionId);
-
-                if (callingUser == null)
-                {
-                    return;
-                }
-
-                if (callingUser.CurrentRoom != null)
-                {
-                    callingUser.CurrentRoom.Users.Remove(callingUser);
-                    await SendUserListUpdate(Clients.Others, callingUser.CurrentRoom, false);
-                }
-
-                User.Remove(callingUser);
+                return;
             }
-            catch (Exception exp)
+
+            if (callingUser.CurrentRoom != null)
             {
-
+                callingUser.CurrentRoom.Users.Remove(callingUser);
+                await SendUserListUpdate(Clients.Others, callingUser.CurrentRoom, false);
             }
+
+            User.Remove(callingUser);
         }
 
         // WebRTC Signal Handler

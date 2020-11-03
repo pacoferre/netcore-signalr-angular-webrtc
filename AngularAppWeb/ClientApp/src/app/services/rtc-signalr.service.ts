@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import * as signalR from '@aspnet/signalr';
+import * as signalR from '@microsoft/signalr';
 import 'webrtc-adapter';
 import { BehaviorSubject, Observable } from 'rxjs';
 
@@ -141,8 +141,7 @@ export class RtcSignalRService {
     const iceServers = await this.getIceServers();
 
     users.forEach(async user => {
-      const connection = this.getConnection(user.connectionId, iceServers);
-
+      const connection = await this.getConnection(user.connectionId, iceServers, false);
       if (connection.user.userName !== user.userName) {
         connection.user.userName = user.userName;
       }
@@ -217,9 +216,8 @@ export class RtcSignalRService {
     }
 
     const iceServers = await this.getIceServers();
-    const connection = this.getConnection(partnerClientId, iceServers);
-    const localStream = await this.getUserMediaInternal();
-    localStream.getTracks().forEach(track => connection.rtcConnection.addTrack(track, localStream));
+    
+    await this.getConnection(partnerClientId, iceServers, true);
   }
 
   private async sendSignal(message: ISignal, partnerClientId: string) {
@@ -246,7 +244,7 @@ export class RtcSignalRService {
 
     try {
       const iceServers = await this.getIceServers();
-      const connection = this.getConnection(partnerClientId, iceServers);
+      const connection = await this.getConnection(partnerClientId, iceServers, false);
       await connection.rtcConnection.addIceCandidate(candidate);
     } catch (error) {
       console.error('Error adding ICE candidate:', error);
@@ -259,7 +257,7 @@ export class RtcSignalRService {
 
     const desc = new RTCSessionDescription(sdp);
     const iceServers = await this.getIceServers();
-    const connection = this.getConnection(partnerClientId, iceServers);
+    const connection = await this.getConnection(partnerClientId, iceServers, false);
 
     if (connection.creatingAnswer) {
       console.warn('Second answer not created.');
@@ -297,19 +295,21 @@ export class RtcSignalRService {
 
     try {
       const iceServers = await this.getIceServers();
-      const connection = this.getConnection(partnerClientId, iceServers);
+      const connection = await this.getConnection(partnerClientId, iceServers, false);
+
       await connection.rtcConnection.setRemoteDescription(sdp);
     } catch (error) {
       console.error('Error in receivedVideoAnswer:', error);
     }
   }
 
-  private getConnection(partnerClientId: string, iceServers: RTCIceServer[]): UserConnection {
-    const connection = this._connections[partnerClientId] || this.createConnection(partnerClientId, iceServers);
+  private async getConnection(partnerClientId: string, iceServers: RTCIceServer[], createOffer: boolean): Promise<UserConnection> {
+    const connection = this._connections[partnerClientId]
+          || (await this.createConnection(partnerClientId, iceServers, createOffer));
     return connection;
   }
 
-  private createConnection(partnerClientId: string, iceServers: RTCIceServer[]): UserConnection {
+  private async createConnection(partnerClientId: string, iceServers: RTCIceServer[], createOffer: boolean): Promise<UserConnection> {
     console.log('WebRTC: creating connection...');
 
     if (this._connections[partnerClientId]) {
@@ -320,25 +320,11 @@ export class RtcSignalRService {
     const userConnection = new UserConnection({ userName: '', connectionId: partnerClientId },
       false, connection);
 
-    connection.onnegotiationneeded = async () => {
-      if (userConnection.creatingOffer) {
-        return;
-      }
-      userConnection.creatingOffer = true;
+    this._connections[partnerClientId] = userConnection;
 
-      try {
-        const desc = await connection.createOffer();
-        await connection.setLocalDescription(desc);
-        await this.sendSignal({
-            type: SignalType.videoOffer,
-            sdp: connection.localDescription
-          }, partnerClientId);
-      } catch (error) {
-        console.error('Error in onnegotiationneeded:', error);
-      }
-
-      userConnection.creatingOffer = false;
-    };
+    const localStream = await this.getUserMediaInternal();
+    localStream.getTracks().forEach(track => connection.addTrack(track, localStream));
+  
     connection.oniceconnectionstatechange = () => {
       switch (connection.iceConnectionState) {
         case 'closed':
@@ -386,7 +372,19 @@ export class RtcSignalRService {
       userConnection.setStream(event.streams[0]);
     };
 
-    this._connections[partnerClientId] = userConnection;
+    if (createOffer) {
+      try {
+        const desc = await connection.createOffer();
+  
+        await connection.setLocalDescription(desc);
+        await this.sendSignal({
+          type: SignalType.videoOffer,
+          sdp: connection.localDescription
+        }, partnerClientId);
+      } catch (error) {
+        console.error('Error in onnegotiationneeded:', error);
+      }
+    }
 
     return userConnection;
   }
@@ -404,6 +402,8 @@ export class RtcSignalRService {
     if (connection) {
       connection.end();
       this._connections[partnerClientId] = undefined;
+
+      delete this._connections[partnerClientId];
     }
   }
 }
