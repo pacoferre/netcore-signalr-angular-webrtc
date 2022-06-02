@@ -15,7 +15,7 @@
     "@angular/cdk": "^10.2.6",
     "@angular/common": "~10.2.0",
     "@angular/compiler": "~10.2.0",
-    "@angular/core": "~10.2.0",
+    "@angular/core": "~11.0.5",
     "@angular/forms": "~10.2.0",
     "@angular/http": "^7.2.16",
     "@angular/material": "^10.2.6",
